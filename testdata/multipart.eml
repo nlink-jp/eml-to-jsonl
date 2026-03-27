@@ -1,0 +1,23 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>, Carol <carol@example.com>
+Cc: Dave <dave@example.com>
+Subject: Multipart Alternative
+Date: Thu, 27 Mar 2026 11:00:00 +0900
+Message-Id: <multi001@example.com>
+In-Reply-To: <simple001@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="==boundary=="
+
+--==boundary==
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+This is the plain text version.
+
+--==boundary==
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<html><body><p>This is the <b>HTML</b> version.</p></body></html>
+
+--==boundary==--

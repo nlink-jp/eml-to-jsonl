@@ -1,0 +1,29 @@
+From: Alice <alice@example.com>
+To: Bob <bob@example.com>
+Subject: Email with Attachment
+Date: Thu, 27 Mar 2026 12:00:00 +0900
+Message-Id: <attach001@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==mixed=="
+
+--==mixed==
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Please find the attached file.
+
+--==mixed==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="report.pdf"
+
+JVBERi0xLjQKdGVzdA==
+
+--==mixed==
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="logo.png"
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
+
+--==mixed==--
