@@ -20,7 +20,7 @@ Designed to compose with [lite-llm](https://github.com/nlink-jp/lite-llm) and ot
 git clone https://github.com/nlink-jp/eml-to-jsonl.git
 cd eml-to-jsonl
 make build
-# Add bin/ to PATH or copy bin/eml-to-jsonl to a directory on PATH
+# Add dist/ to PATH or copy dist/eml-to-jsonl to a directory on PATH
 ```
 
 ## Usage

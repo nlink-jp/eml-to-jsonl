@@ -12,7 +12,7 @@ No LLM API is required — eml-to-jsonl is a pure parser with no network calls.
 git clone https://github.com/nlink-jp/eml-to-jsonl.git
 cd eml-to-jsonl
 make build
-# Add bin/ to PATH or copy bin/eml-to-jsonl to a directory on PATH
+# Add dist/ to PATH or copy dist/eml-to-jsonl to a directory on PATH
 ```
 
 ## Git hooks

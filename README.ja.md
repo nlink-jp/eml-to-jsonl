@@ -21,7 +21,7 @@
 git clone https://github.com/nlink-jp/eml-to-jsonl.git
 cd eml-to-jsonl
 make build
-# bin/ を PATH に追加するか、bin/eml-to-jsonl を PATH 上のディレクトリにコピーしてください
+# dist/ を PATH に追加するか、dist/eml-to-jsonl を PATH 上のディレクトリにコピーしてください
 ```
 
 ## 使い方
