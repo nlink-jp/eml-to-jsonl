@@ -5,7 +5,8 @@ BINARY  := eml-to-jsonl
 .PHONY: build test vet lint check clean setup build-all
 
 build:
-	go build $(LDFLAGS) -o bin/$(BINARY) .
+	@mkdir -p dist
+	go build $(LDFLAGS) -o dist/$(BINARY) .
 
 test:
 	go test ./...
@@ -26,7 +27,7 @@ setup:
 	chmod +x .git/hooks/pre-commit .git/hooks/pre-push
 
 clean:
-	rm -rf bin/ dist/
+	rm -rf dist/
 
 build-all:
 	mkdir -p dist
