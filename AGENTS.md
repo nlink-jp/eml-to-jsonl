@@ -1,18 +1,18 @@
-# AGENTS.md — lite-switch
+# AGENTS.md — eml-to-jsonl
 
-Natural language classifier for shell pipelines.
-Reads stdin, outputs one tag to stdout.
+EML parser for shell pipelines.
+Reads `.eml` files and outputs structured JSONL — one JSON object per message — to stdout.
 Part of [util-series](https://github.com/nlink-jp/util-series).
 
 ## Rules
 
 - Project rules (security, testing, docs, release, etc.): → [RULES.md](RULES.md)
-- Series-wide conventions (config format, Makefile, etc.): → [util-series CONVENTIONS.md](https://github.com/nlink-jp/util-series/blob/main/CONVENTIONS.md)
+- Series-wide conventions: → [util-series CONVENTIONS.md](https://github.com/nlink-jp/util-series/blob/main/CONVENTIONS.md)
 
 ## Build & test
 
 ```sh
-make build    # bin/lite-switch
+make build    # dist/eml-to-jsonl
 make check    # vet → lint → test → build → govulncheck
 go test ./... # tests only
 ```
@@ -20,18 +20,17 @@ go test ./... # tests only
 ## Key structure
 
 ```
-main.go                     ← flag parsing, stdin reading, wiring
-internal/config/            ← loads config.toml (TOML) + switches.yaml (YAML), env overrides
-internal/llm/               ← HTTP client (retry + backoff), prompt building, input wrapping
-internal/classifier/        ← tool calling, tag extraction (4-strategy fallback chain)
+main.go                        ← entry point, flag parsing, stdin/file reading
+internal/parser/
+  email.go                     ← Email struct, ToJSON()
+  headers.go                   ← header extraction (From, To, Subject, Date, etc.)
+  body.go                      ← MIME body parsing (text/plain, text/html)
+  charset.go                   ← character encoding detection and conversion
+  parser_test.go               ← unit tests
 ```
 
 ## Gotchas
 
-- **Two config files, two formats**: `config.toml` (TOML, API settings) and `switches.yaml` (YAML, classification data). Do not mix them up.
-- **Switches file is not a system config**: it belongs next to the project, not in `~/.config/`. It is safe to version-control (no secrets).
-- **No Cobra**: uses the standard `flag` package. No subcommands.
-- **Endpoint normalisation**: `base_url` accepts with or without `/v1`; `client.endpoint()` handles both.
-- **Fallback chain**: tool call → JSON in content → tag string in content → last switch. The last switch acts as a catch-all default.
-- **Module path**: `github.com/nlink-jp/lite-switch`.
-- **Env vars**: `LITE_SWITCH_BASE_URL`, `LITE_SWITCH_API_KEY`, `LITE_SWITCH_MODEL`.
+- **No external dependencies**: uses only the Go standard library for MIME parsing.
+- **Charset handling**: auto-detects and converts non-UTF-8 encodings (ISO-2022-JP, Shift_JIS, etc.).
+- **Module path**: `github.com/nlink-jp/eml-to-jsonl`.
