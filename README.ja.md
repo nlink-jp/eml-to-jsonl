@@ -107,6 +107,31 @@ make check       # vet + lint + test + build + govulncheck
 - [docs/ja/setup.md](docs/ja/setup.md) — セットアップガイド
 - [docs/dependencies.md](docs/dependencies.md) — 外部依存ライブラリ
 
+## PST ファイルの処理
+
+Outlook PST (Personal Storage Table) ファイルは
+[readpst](https://www.five-ten-sg.com/libpst/) で EML に変換してから
+eml-to-jsonl で処理できます:
+
+```sh
+# readpst のインストール
+# macOS:         brew install libpst
+# Debian/Ubuntu: apt install pst-utils
+
+# PST → EML に変換
+readpst -e -o /tmp/pst-output/ archive.pst
+
+# 展開された EML を一括パース
+eml-to-jsonl /tmp/pst-output/
+
+# パイプライン: PST → EML → JSONL → LLM 分析
+readpst -e -o /tmp/pst-output/ archive.pst && \
+  eml-to-jsonl /tmp/pst-output/ | gem-cli --batch -s "各メールを要約して"
+```
+
+[msg-to-jsonl](https://github.com/nlink-jp/msg-to-jsonl) と組み合わせる場合は
+`readpst -m` で MSG 形式で出力できます。
+
 ## util-series について
 
 eml-to-jsonl は [util-series](https://github.com/nlink-jp/util-series) の一部です。

@@ -107,6 +107,30 @@ make check       # vet + lint + test + build + govulncheck
 - [docs/setup.md](docs/setup.md) — detailed setup guide
 - [docs/dependencies.md](docs/dependencies.md) — third-party dependencies
 
+## Working with PST files
+
+Outlook PST (Personal Storage Table) files can be converted to EML using
+[readpst](https://www.five-ten-sg.com/libpst/) and then processed with eml-to-jsonl:
+
+```sh
+# Install readpst
+# macOS:        brew install libpst
+# Debian/Ubuntu: apt install pst-utils
+
+# Convert PST to EML files
+readpst -e -o /tmp/pst-output/ archive.pst
+
+# Parse all extracted EML files
+eml-to-jsonl /tmp/pst-output/
+
+# Pipeline: PST → EML → JSONL → LLM analysis
+readpst -e -o /tmp/pst-output/ archive.pst && \
+  eml-to-jsonl /tmp/pst-output/ | gem-cli --batch -s "Summarize each email"
+```
+
+This approach also works with [msg-to-jsonl](https://github.com/nlink-jp/msg-to-jsonl) —
+use `readpst -m` to output MSG format instead of EML.
+
 ## Part of util-series
 
 eml-to-jsonl is part of the [util-series](https://github.com/nlink-jp/util-series) —
