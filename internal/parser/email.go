@@ -22,6 +22,7 @@ type Email struct {
 	Subject     string       `json:"subject,omitempty"`
 	Date        string       `json:"date,omitempty"`
 	XMailer     string       `json:"x_mailer,omitempty"`
+	Received    []string     `json:"received,omitempty"`
 	Encoding    string       `json:"encoding,omitempty"`
 	Body        []BodyPart   `json:"body"`
 	Attachments []Attachment `json:"attachments"`
@@ -78,6 +79,13 @@ func extractHeaders(msg *mail.Message, email *Email) error {
 	email.MessageID = strings.TrimSpace(h.Get("Message-Id"))
 	email.InReplyTo = strings.TrimSpace(h.Get("In-Reply-To"))
 	email.XMailer = strings.TrimSpace(h.Get("X-Mailer"))
+
+	if received := msg.Header["Received"]; len(received) > 0 {
+		email.Received = make([]string, len(received))
+		for i, v := range received {
+			email.Received[i] = strings.TrimSpace(v)
+		}
+	}
 
 	email.Subject = decodeMIMEHeader(h.Get("Subject"))
 
