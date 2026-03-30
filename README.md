@@ -6,7 +6,7 @@ Designed to compose with [lite-llm](https://github.com/nlink-jp/lite-llm) and ot
 
 ## Features
 
-- Extracts headers: `from`, `to`, `cc`, `bcc`, `subject`, `date`, `message_id`, `in_reply_to`, `x_mailer`
+- Extracts headers: `from`, `to`, `cc`, `bcc`, `subject`, `date`, `message_id`, `in_reply_to`, `x_mailer`, `received`
 - Decodes all content to **UTF-8**; records original charset in the `encoding` field
 - Handles multipart bodies: `text/plain` preferred, `text/html` included when present
 - Decodes `base64`, `quoted-printable`, `7bit`, and `8bit` transfer encodings
@@ -61,6 +61,10 @@ Each message produces one JSON line:
   "subject": "Hello World",
   "date": "2026-03-27T10:00:00+09:00",
   "x_mailer": "Apple Mail",
+  "received": [
+    "from mx2.example.com by mx1.corp.com; Mon, 30 Mar 2026 09:00:00 +0900",
+    "from sender.example.org by mx2.example.com; Mon, 30 Mar 2026 08:59:55 +0900"
+  ],
   "encoding": "ISO-2022-JP",
   "body": [
     {"type": "text/plain", "content": "Hello..."},
