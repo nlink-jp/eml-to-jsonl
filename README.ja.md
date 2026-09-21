@@ -107,9 +107,9 @@ make check       # vet + lint + test + build + govulncheck
 
 ## ドキュメント
 
-- [docs/ja/design/overview.md](docs/ja/design/overview.md) — 設計概要
-- [docs/ja/setup.md](docs/ja/setup.md) — セットアップガイド
-- [docs/dependencies.md](docs/dependencies.md) — 外部依存ライブラリ
+- [docs/ja/design/overview.ja.md](docs/ja/design/overview.ja.md) — 設計概要
+- [docs/ja/setup.ja.md](docs/ja/setup.ja.md) — セットアップガイド
+- [docs/ja/dependencies.ja.md](docs/ja/dependencies.ja.md) — 外部依存ライブラリ
 
 ## PST ファイルの処理
 

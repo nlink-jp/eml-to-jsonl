@@ -107,9 +107,9 @@ make check       # vet + lint + test + build + govulncheck
 
 ## Documentation
 
-- [docs/design/overview.md](docs/design/overview.md) — architecture and design decisions
-- [docs/setup.md](docs/setup.md) — detailed setup guide
-- [docs/dependencies.md](docs/dependencies.md) — third-party dependencies
+- [docs/en/design/overview.md](docs/en/design/overview.md) — architecture and design decisions
+- [docs/en/setup.md](docs/en/setup.md) — detailed setup guide
+- [docs/en/dependencies.md](docs/en/dependencies.md) — third-party dependencies
 
 ## Working with PST files
 
