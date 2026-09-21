@@ -3,7 +3,7 @@
 ## Purpose
 
 eml-to-jsonl parses RFC 2822 EML files and outputs structured JSONL to stdout.
-It is designed as a Unix filter that feeds into downstream analysis tools such as lite-llm.
+It is designed as a Unix filter that feeds into downstream analysis tools such as llm-cli.
 
 ## Input handling
 

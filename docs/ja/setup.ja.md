@@ -35,6 +35,6 @@ eml-to-jsonl ~/Downloads/exported-mail/
 # 整形出力で確認
 eml-to-jsonl --pretty message.eml | head -40
 
-# lite-llm へパイプして分析
-eml-to-jsonl inbox/ | lite-llm -p "各メールの送信者と件名を一覧にしてください。"
+# llm-cli へパイプして分析
+eml-to-jsonl inbox/ | llm-cli -s "各メールの送信者と件名を一覧にしてください。"
 ```

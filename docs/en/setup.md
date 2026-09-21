@@ -35,6 +35,6 @@ eml-to-jsonl ~/Downloads/exported-mail/
 # Pretty-print for inspection
 eml-to-jsonl --pretty message.eml | head -40
 
-# Pipe into lite-llm
-eml-to-jsonl inbox/ | lite-llm -p "List the sender and subject of each email."
+# Pipe into llm-cli
+eml-to-jsonl inbox/ | llm-cli -s "List the sender and subject of each email."
 ```

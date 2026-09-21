@@ -2,7 +2,7 @@
 
 EML parser for shell pipelines.
 Reads `.eml` files and outputs structured JSONL — one JSON object per message — to stdout.
-Designed to compose with [lite-llm](https://github.com/nlink-jp/lite-llm) and other tools for email analysis pipelines.
+Designed to compose with [llm-cli](https://github.com/nlink-jp/llm-cli) and other tools for email analysis pipelines.
 
 ## Features
 
@@ -41,8 +41,8 @@ cat message.eml | eml-to-jsonl
 # Pretty-print for inspection
 eml-to-jsonl --pretty message.eml
 
-# Pipe into lite-llm for analysis
-eml-to-jsonl inbox/ | lite-llm -p "Summarise each email in one sentence."
+# Pipe into llm-cli for analysis
+eml-to-jsonl inbox/ | llm-cli -s "Summarise each email in one sentence."
 ```
 
 ## Output format

@@ -2,7 +2,7 @@
 
 シェルパイプライン向け EML パーサー。
 `.eml` ファイルを読み込み、構造化された JSONL（1メール1行）を stdout に出力します。
-[lite-llm](https://github.com/nlink-jp/lite-llm) などのツールとパイプで組み合わせ、
+[llm-cli](https://github.com/nlink-jp/llm-cli) などのツールとパイプで組み合わせ、
 メール分析パイプラインを構築することを想定して設計されています。
 
 ## 機能
@@ -42,8 +42,8 @@ cat message.eml | eml-to-jsonl
 # 整形出力（人間向け確認用）
 eml-to-jsonl --pretty message.eml
 
-# lite-llm へパイプしてメール分析
-eml-to-jsonl inbox/ | lite-llm -p "各メールを1文で要約してください。"
+# llm-cli へパイプしてメール分析
+eml-to-jsonl inbox/ | llm-cli -s "各メールを1文で要約してください。"
 ```
 
 ## 出力フォーマット

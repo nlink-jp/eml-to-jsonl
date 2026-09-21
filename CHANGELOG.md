@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   informational `spctl` line may be ignored. Matches the org template
   (CONVENTIONS.md §Code Signing → Verifying a release).
 
+### Documentation
+
+- The pipe examples and comparisons named lite-llm, which is archived; they name
+  its successor, llm-cli, in the form its README documents for piped data
+  (`… | llm-cli -s "<instruction>"`).
+
 ## [0.4.0] - 2026-07-12
 
 ### Added
