@@ -14,7 +14,7 @@ Part of [util-series](https://github.com/nlink-jp/util-series).
 ```sh
 make build    # dist/eml-to-jsonl
 make check    # vet → lint → test → build → govulncheck
-make verify-release  # gate: .notarized marker + freshness (run before upload)
+make verify-release  # gate: notarized, fresh, runs at this version, clean linux archives (run before upload)
 go test ./... # tests only
 ```
 
