@@ -2,7 +2,7 @@
 
 EML parser for shell pipelines.
 Reads `.eml` files and outputs structured JSONL — one JSON object per message — to stdout.
-Designed to compose with [llm-cli](https://github.com/nlink-jp/llm-cli) and other tools for email analysis pipelines.
+Designed to compose with [lagent](https://github.com/nlink-jp/lagent) and other tools for email analysis pipelines.
 
 ## Features
 
@@ -41,8 +41,8 @@ cat message.eml | eml-to-jsonl
 # Pretty-print for inspection
 eml-to-jsonl --pretty message.eml
 
-# Pipe into llm-cli for analysis
-eml-to-jsonl inbox/ | llm-cli -s "Summarise each email in one sentence."
+# Pipe into lagent for analysis (the whole stream is one attachment, up to 256 KiB)
+eml-to-jsonl inbox/ | lagent -p "Summarise each email in one sentence."
 ```
 
 ## Output format
@@ -127,9 +127,12 @@ readpst -e -o /tmp/pst-output/ archive.pst
 # Parse all extracted EML files
 eml-to-jsonl /tmp/pst-output/
 
-# Pipeline: PST → EML → JSONL → LLM analysis
+# Pipeline: PST → EML → JSONL → LLM analysis, one gem-agent run per email
+# (a mailbox outgrows the 256 KiB a single piped attachment can carry)
 readpst -e -o /tmp/pst-output/ archive.pst && \
-  eml-to-jsonl /tmp/pst-output/ | gem-cli --batch -s "Summarize each email"
+  eml-to-jsonl /tmp/pst-output/ | while IFS= read -r mail; do
+    printf '%s\n' "$mail" | gem-agent -p "Summarize this email"
+  done
 ```
 
 This approach also works with [msg-to-jsonl](https://github.com/nlink-jp/msg-to-jsonl) —

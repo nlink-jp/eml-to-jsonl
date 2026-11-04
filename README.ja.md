@@ -2,7 +2,7 @@
 
 シェルパイプライン向け EML パーサー。
 `.eml` ファイルを読み込み、構造化された JSONL（1メール1行）を stdout に出力します。
-[llm-cli](https://github.com/nlink-jp/llm-cli) などのツールとパイプで組み合わせ、
+[lagent](https://github.com/nlink-jp/lagent) などのツールとパイプで組み合わせ、
 メール分析パイプラインを構築することを想定して設計されています。
 
 ## 機能
@@ -42,8 +42,8 @@ cat message.eml | eml-to-jsonl
 # 整形出力（人間向け確認用）
 eml-to-jsonl --pretty message.eml
 
-# llm-cli へパイプしてメール分析
-eml-to-jsonl inbox/ | llm-cli -s "各メールを1文で要約してください。"
+# lagent へパイプしてメール分析（入力全体を 1 つの添付として渡す。上限 256 KiB）
+eml-to-jsonl inbox/ | lagent -p "各メールを1文で要約してください。"
 ```
 
 ## 出力フォーマット
@@ -128,9 +128,12 @@ readpst -e -o /tmp/pst-output/ archive.pst
 # 展開された EML を一括パース
 eml-to-jsonl /tmp/pst-output/
 
-# パイプライン: PST → EML → JSONL → LLM 分析
+# パイプライン: PST → EML → JSONL → LLM 分析（1 通ごとに gem-agent を 1 回実行）
+# （メールボックス全体は、1 回のパイプで渡せる 256 KiB を超える）
 readpst -e -o /tmp/pst-output/ archive.pst && \
-  eml-to-jsonl /tmp/pst-output/ | gem-cli --batch -s "各メールを要約して"
+  eml-to-jsonl /tmp/pst-output/ | while IFS= read -r mail; do
+    printf '%s\n' "$mail" | gem-agent -p "このメールを要約して"
+  done
 ```
 
 [msg-to-jsonl](https://github.com/nlink-jp/msg-to-jsonl) と組み合わせる場合は

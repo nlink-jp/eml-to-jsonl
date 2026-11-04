@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The pipe examples and comparisons named lite-llm, which is archived; they name
   its successor, llm-cli, in the form its README documents for piped data
   (`… | llm-cli -s "<instruction>"`).
+- The pipe examples named llm-cli and gem-cli, which are now archived too; they
+  name their successors, lagent and gem-agent, in the form those document for
+  piped data (`… | lagent -p "<instruction>"`). The PST pipeline runs gem-agent
+  once per email, as `gem-cli --batch` did, because one piped attachment holds
+  at most 256 KiB.
 
 ### Internal
 
