@@ -7,12 +7,15 @@
 
 ## 機能
 
-- ヘッダーの抽出: `from`, `to`, `cc`, `bcc`, `subject`, `date`, `message_id`, `in_reply_to`, `x_mailer`, `received`
-- すべての本文を **UTF-8** にデコード。元のエンコードを `encoding` フィールドに記録
-- マルチパート対応: `text/plain` 優先、`text/html` も含めて出力
-- 転送エンコーディングの対応: `base64`、`quoted-printable`、`7bit`、`8bit`
-- 日本語文字コードに対応: ISO-2022-JP、Shift_JIS、EUC-JP（その他 IANA 登録済み文字コードも対応）
-- 添付ファイルのメタデータ（ファイル名、MIME タイプ、サイズ）をバイナリ埋め込みなしで出力
+- メールは組織のメールパーサー [mailparse](https://github.com/nlink-jp/mailparse)（攻撃者が作ったメールを前提に
+  書かれている）で読む。msg-to-jsonl と同じ形を出力する
+- ヘッダー: `from`、`sender`、`reply_to`、`return_path`、`to`、`cc`、`bcc`、`subject`、`date`、`message_id`、
+  `in_reply_to`、`references`、`x_mailer`、`received`。アドレスの欄はすべての出現を読み、mailbox は RFC 5322 の形で
+  書く（符号化した表示名がアドレスに化けない）
+- すべての本文を **UTF-8** にデコード。元の文字コードを `encoding` フィールドに記録
+- 日本語文字コードに対応: ISO-2022-JP、Shift_JIS、EUC-JP（その他 `golang.org/x/text` が知る文字コード）
+- 添付ファイルのメタデータ（ファイル名、MIME タイプ、サイズ）。転送されたメールは同じ形に解析する
+- `warnings`: 解析が失敗せずに処理したこと（mailparse の安定したコード）
 - 入力: stdin、ファイル引数、ディレクトリ（ディレクトリ指定時は `*.eml` を一括処理）
 
 ## インストール
@@ -48,22 +51,24 @@ eml-to-jsonl inbox/ | lagent -p "各メールを1文で要約してください�
 
 ## 出力フォーマット
 
-各メッセージが1行の JSON として出力されます:
+各メッセージが1行の JSON として出力されます（eml-to-jsonl と msg-to-jsonl は同じ形）:
 
 ```json
 {
   "source": "inbox/message.eml",
   "message_id": "<abc123@example.com>",
   "in_reply_to": "<xyz@example.com>",
+  "references": "<first@example.com> <xyz@example.com>",
   "from": "山田太郎 <yamada@example.co.jp>",
+  "sender": "list@example.org",
+  "reply_to": ["\"営業, 東京\" <sales@example.co.jp>"],
+  "return_path": "bounce@example.co.jp",
   "to": ["鈴木花子 <suzuki@example.co.jp>"],
-  "cc": [],
-  "bcc": [],
   "subject": "テスト",
   "date": "2026-03-27T10:00:00+09:00",
   "x_mailer": "Apple Mail",
   "received": [
-    "from mx2.example.com by mx1.corp.com; Mon, 30 Mar 2026 09:00:00 +0900",
+    "from mx2.example.com by mx1.example.net; Mon, 30 Mar 2026 09:00:00 +0900",
     "from sender.example.org by mx2.example.com; Mon, 30 Mar 2026 08:59:55 +0900"
   ],
   "encoding": "ISO-2022-JP",
@@ -72,22 +77,35 @@ eml-to-jsonl inbox/ | lagent -p "各メールを1文で要約してください�
     {"type": "text/html",  "content": "<html>...</html>"}
   ],
   "attachments": [
-    {"filename": "report.pdf", "mime_type": "application/pdf", "size": 102400}
+    {"filename": "report.pdf", "mime_type": "application/pdf", "size": 102400},
+    {"filename": "", "mime_type": "message/rfc822", "size": 2048,
+     "message": {"message_id": "<fwd@example.org>", "subject": "元のメール", "body": [], "attachments": [], "warnings": []}}
+  ],
+  "warnings": [
+    {"code": "duplicate_field", "detail": "From appears 2 times; every occurrence is kept"}
   ]
 }
 ```
 
-**本文の順序:**
-1. `text/plain` が存在する場合は常に先頭
-2. 次に `text/html`
-3. HTML のみのメールは `text/html` が1件だけ出力される
+**アドレス:** 欄のすべての出現の、すべての mailbox。`from` と `sender` は 1 本の文字列（`, ` で連ねる）、`to`・`cc`・
+`bcc`・`reply_to` は配列。表示名に atom の文字と空白以外が含まれれば引用符で囲むので、復号すると
+`Bank <security@bank.example>` になる表示名も表示名のまま。`return_path` はバウンスなら `<>`。
 
-**encoding フィールド:**
-主要テキストパートの元の文字コードを記録（例: `ISO-2022-JP`）。
-UTF-8 または ASCII の場合は省略されます。
+**本文:** `text/plain` と `text/html` のパートを、メールの中の順に。その他のテキストのパート（`text/calendar`、
+`text/csv`）は添付になる。
 
-**attachments フィールド:**
-メタデータのみ（ファイル名・MIME タイプ・デコード後のバイトサイズ）。バイナリは埋め込みません。
+**encoding フィールド:** UTF-8・US-ASCII 以外の最初の本文の元の文字コード（例: `ISO-2022-JP`）。それ以外は省略。
+
+**attachments フィールド:** メタデータのみ（ファイル名・MIME タイプ・デコード後のバイトサイズ）。バイナリは
+埋め込まない。メールに名前が無ければファイル名は空。添付されたメール（`message/rfc822`、または中身でメールと
+分かるもの）は `message` に同じ形（`source` は無し）で入る。3 層まで。
+
+**warnings:** mailparse がこのメールで失敗せずに処理したこと（重複したヘッダー、壊れたアドレス、壊れた符号化、
+上限など）を `{code, detail, part}` で。コードは安定している（[mailparse の README](https://github.com/nlink-jp/mailparse)）。
+常に配列。`not_detected_as_mail` は、メールと認められなかったが読んだ最小限のメールに付く。
+
+**受け付けない入力:** Outlook の `.msg` と `winmail.dat`（msg-to-jsonl を使う）、ヘッダーが 1 つも無い入力、
+64 MiB を超えるメール。エラーは stderr に出し、他のファイルの処理は続ける。
 
 ## フラグ
 

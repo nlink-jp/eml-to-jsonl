@@ -4,19 +4,18 @@
 
 | パッケージ | バージョン | 目的 | 内製しない理由 |
 |---------|---------|---------|-----------------|
-| `golang.org/x/text` | v0.35.0 | 文字セットの判定と変換（ISO-2022-JP、Shift_JIS、EUC-JP、および IANA 登録済みの全文字セット） | 数十種類のエンコーディングに対して正しい文字セット変換を実装するのは相当な作業量になる。x/text パッケージは Go チームがメンテナンスする Go 界の定番解である。 |
+| `github.com/nlink-jp/mailparse` | v0.2.0 | メールを読む: RFC 5322 のヘッダーとアドレス、MIME、転送エンコーディング、文字コード、添付されたメール | 内製である。組織のメールパーサーで、msg-to-jsonl・mail-analyzer・mail-analyzer-local と共有し、同じ読み方をする。 |
+| `golang.org/x/text` | （mailparse 経由） | 文字コードの変換（ISO-2022-JP、Shift_JIS、EUC-JP、Windows のコードページ） | Go チームが保守する、Go の定番の文字コードライブラリ。 |
+| `golang.org/x/net` | （mailparse 経由） | `<meta charset>` からの文字コードの判定（`html`） | Go チームが保守する。 |
+
+コミュニティ製のパッケージは使わない。
 
 ## 使用している標準ライブラリパッケージ
 
 | パッケージ | 目的 |
 |---------|---------|
-| `net/mail` | RFC 2822 メッセージの解析（ヘッダーと本文の分割） |
-| `mime` | MIME メディアタイプの解析と RFC 2047 ワードのデコード |
-| `mime/multipart` | MIME マルチパート本文の解析 |
-| `mime/quotedprintable` | Quoted-printable 転送エンコーディング |
-| `encoding/base64` | Base64 転送エンコーディング |
-| `encoding/json` | JSONL 出力 |
-| `path/filepath` | ディレクトリのグロブ展開とパス操作 |
+| `encoding/json` | JSONL の出力 |
+| `path/filepath` | ディレクトリのグロブ |
 
 ## 開発
 

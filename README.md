@@ -6,12 +6,15 @@ Designed to compose with [lagent](https://github.com/nlink-jp/lagent) and other 
 
 ## Features
 
-- Extracts headers: `from`, `to`, `cc`, `bcc`, `subject`, `date`, `message_id`, `in_reply_to`, `x_mailer`, `received`
-- Decodes all content to **UTF-8**; records original charset in the `encoding` field
-- Handles multipart bodies: `text/plain` preferred, `text/html` included when present
-- Decodes `base64`, `quoted-printable`, `7bit`, and `8bit` transfer encodings
-- Supports Japanese charsets: ISO-2022-JP, Shift_JIS, EUC-JP (and any IANA-registered charset)
-- Attachment metadata (filename, MIME type, size) without embedding binary content
+- Reads the message with [mailparse](https://github.com/nlink-jp/mailparse), the organization's
+  mail parser written for messages composed by an attacker; msg-to-jsonl prints the same schema
+- Headers: `from`, `sender`, `reply_to`, `return_path`, `to`, `cc`, `bcc`, `subject`, `date`,
+  `message_id`, `in_reply_to`, `references`, `x_mailer`, `received` — every occurrence of an address
+  field, mailboxes written in RFC 5322 form so an encoded display name cannot pass for an address
+- Decodes all content to **UTF-8**; records the original charset in the `encoding` field
+- Japanese charsets: ISO-2022-JP, Shift_JIS, EUC-JP (and any charset `golang.org/x/text` knows)
+- Attachment metadata (filename, MIME type, size); a forwarded message is parsed into the same shape
+- `warnings`: what the parser met and handled instead of failing (stable mailparse codes)
 - Input: stdin, file arguments, or directory (processes all `*.eml` in the directory)
 
 ## Installation
@@ -47,22 +50,25 @@ eml-to-jsonl inbox/ | lagent -p "Summarise each email in one sentence."
 
 ## Output format
 
-Each message produces one JSON line:
+Each message produces one JSON line (eml-to-jsonl and msg-to-jsonl print the same schema):
 
 ```json
 {
   "source": "inbox/message.eml",
   "message_id": "<abc123@example.com>",
   "in_reply_to": "<xyz@example.com>",
+  "references": "<first@example.com> <xyz@example.com>",
   "from": "Alice <alice@example.com>",
+  "sender": "list@example.org",
+  "reply_to": ["\"Sales, Tokyo\" <sales@example.com>"],
+  "return_path": "bounce@example.com",
   "to": ["Bob <bob@example.com>"],
   "cc": ["Carol <carol@example.com>"],
-  "bcc": [],
   "subject": "Hello World",
   "date": "2026-03-27T10:00:00+09:00",
   "x_mailer": "Apple Mail",
   "received": [
-    "from mx2.example.com by mx1.corp.com; Mon, 30 Mar 2026 09:00:00 +0900",
+    "from mx2.example.com by mx1.example.net; Mon, 30 Mar 2026 09:00:00 +0900",
     "from sender.example.org by mx2.example.com; Mon, 30 Mar 2026 08:59:55 +0900"
   ],
   "encoding": "ISO-2022-JP",
@@ -71,23 +77,40 @@ Each message produces one JSON line:
     {"type": "text/html",  "content": "<html>...</html>"}
   ],
   "attachments": [
-    {"filename": "report.pdf", "mime_type": "application/pdf", "size": 102400}
+    {"filename": "report.pdf", "mime_type": "application/pdf", "size": 102400},
+    {"filename": "", "mime_type": "message/rfc822", "size": 2048,
+     "message": {"message_id": "<fwd@example.org>", "subject": "Original", "body": [], "attachments": [], "warnings": []}}
+  ],
+  "warnings": [
+    {"code": "duplicate_field", "detail": "From appears 2 times; every occurrence is kept"}
   ]
 }
 ```
 
-**Body ordering rules:**
-1. `text/plain` is always listed first if present.
-2. `text/html` follows.
-3. If the message is HTML-only, a single `text/html` part is output.
+**Addresses:** every mailbox of every occurrence of the field. `from` and `sender` are one string
+(mailboxes joined by `, `); `to`, `cc`, `bcc` and `reply_to` are arrays. A display name holding
+anything but atom characters and spaces is written as a quoted string, so a name that decodes to
+`Bank <security@bank.example>` stays a name. `return_path` is `<>` for a bounce.
 
-**Encoding field:**
-Set to the original charset of the primary text part (e.g. `ISO-2022-JP`).
-Omitted when the message is already UTF-8 or ASCII.
+**Body:** the `text/plain` and `text/html` parts, in message order. Other text parts
+(`text/calendar`, `text/csv`) are attachments.
 
-**Attachments:**
-Only metadata is included (filename, MIME type, decoded byte size).
-Binary content is not embedded in the output.
+**Encoding field:** the original charset of the first body that is not UTF-8 or US-ASCII
+(e.g. `ISO-2022-JP`); omitted otherwise.
+
+**Attachments:** metadata only (filename, MIME type, decoded byte size); binary content is not
+embedded. A filename is empty when the message gives none. An attached message (`message/rfc822`,
+or a message recognized by its content) is parsed into `message`, in the same shape (without
+`source`), up to three levels deep.
+
+**Warnings:** what mailparse met and handled in this message instead of failing — a duplicated
+header, a malformed address, a broken encoding, a limit — as `{code, detail, part}`. The codes are
+stable; see the [mailparse README](https://github.com/nlink-jp/mailparse). Always an array.
+`not_detected_as_mail` marks minimal mail that was read although it was not recognized as mail.
+
+**Refused input:** an Outlook `.msg` or a `winmail.dat` (use msg-to-jsonl), input with no header
+field, and messages larger than 64 MiB. The error goes to stderr and the other files are still
+processed.
 
 ## Flags
 

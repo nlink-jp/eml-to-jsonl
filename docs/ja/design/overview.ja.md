@@ -2,76 +2,58 @@
 
 ## 目的
 
-eml-to-jsonl は RFC 2822 形式の EML ファイルをパースし、構造化された JSONL を stdout に出力します。
-lagent などのダウンストリームツールへ入力するための Unix フィルターとして設計されています。
+eml-to-jsonl は RFC 5322（.eml）のメールを読み、構造化した JSONL を stdout に出力する。
+lagent などの下流の分析ツールへつなぐ Unix フィルタとして作られている。Outlook の .msg には msg-to-jsonl が同じ形を出力する。
 
 ## 入力処理
 
-| 入力ソース | 方法 |
-|-----------|------|
-| stdin | 引数なしの場合のデフォルト |
+| 入力元 | 方法 |
+|--------|-----|
+| stdin | 引数が無いときの既定 |
 | ファイル引数 | `eml-to-jsonl file.eml` |
-| ディレクトリ引数 | `eml-to-jsonl dir/` — ディレクトリ直下の `*.eml` を一括処理（再帰なし） |
-| 混在 | `eml-to-jsonl dir/ extra.eml` — 指定順に処理 |
+| ディレクトリ引数 | `eml-to-jsonl dir/` — ディレクトリ直下の `*.eml` をグロブ（再帰しない） |
+| 混在 | `eml-to-jsonl dir/ extra.eml` — 順に処理 |
 
-個別ファイルのエラーは stderr に出力し、残りのファイルの処理を継続します。
-1件でも失敗した場合、終了コードは 1 になります。
+個々のファイルのエラーは stderr に出し、残りのファイルの処理を続ける。1 つでも失敗すれば終了コードは 1。
 
 ## 出力フォーマット
 
-stdout にメッセージ1件につき1行の JSON オブジェクトを出力します。
-`--pretty` フラグでインデント付き JSON に切り替えられます。
-`json.Encoder.SetEscapeHTML(false)` を使用しており、本文中の HTML はエンティティエスケープされません。
+1 メールにつき 1 つの JSON オブジェクトを stdout に出す。`--pretty` で字下げした複数行の JSON になる。
+本文の HTML が実体参照にならないよう `json.Encoder.SetEscapeHTML(false)` を使う。
 
-## パースパイプライン
+## 解析
+
+解析はすべて [mailparse](https://github.com/nlink-jp/mailparse) が行う。このツールは自前の解析を持たない。
 
 ```
 reader（ファイル / stdin）
-  └─ net/mail.ReadMessage()       — RFC 2822 ヘッダーと本文の分割
-       ├─ extractHeaders()        — RFC 2047 ヘッダーを UTF-8 にデコード
-       │    └─ mime.WordDecoder   — golang.org/x/text によるカスタム CharsetReader
-       └─ parseBody()             — MIME 本文の振り分け
-            ├─ 単純パート         — decodeTransfer() → decodeToUTF8() → BodyPart
-            └─ multipart/*        — 再帰的な parseMultipart()
-                 ├─ テキストパート → BodyPart（text/plain を先頭、text/html を後）
-                 └─ 添付ファイル  → Attachment（ファイル名・MIME タイプ・デコード後サイズ）
+  └─ 64 MiB + 1 バイトまで読む             — mailparse.DefaultMaxSize。超えれば ErrTooLarge
+       ├─ mailparse.Detect()              — .msg / TNEF は msg-to-jsonl を案内して断る
+       └─ mailparse.ParseBytes(AssumeEML) — ヘッダー、アドレス、MIME、文字コード、入れ子のメール
+            └─ parser.FromMessage()       — 下の共通の写し方
 ```
 
-## 文字コード処理
+呼び出し側が「メールだ」と言っている入力なので `AssumeEML` を立てる。形式の判別がメールと認めない最小限のメール
+（Subject だけの cron のメールなど）も、断らずに `not_detected_as_mail` の警告つきで読む。
 
-すべてのテキストコンテンツは出力前に UTF-8 に変換されます。
+## 写し方（eml-to-jsonl と msg-to-jsonl で同一）
 
-**ヘッダー:** RFC 2047 エンコードワード（`=?charset?encoding?text?=`）は
-`mime.WordDecoder` によってデコードされます。カスタム `CharsetReader` は
-`golang.org/x/text/encoding/htmlindex` を使用し、ISO-2022-JP・Shift_JIS・EUC-JP を含む
-IANA 登録済みのすべての文字コードに対応します。
+`internal/parser/email.go` が `mailparse.Message` を JSONL の 1 行に写す。このファイルは 2 つのツールでバイト単位で
+同じなので、2 つは同じ形を出力する。違うのは入口（`parse.go`）だけ。
 
-**本文パート:** `Content-Type` の `charset` パラメーターから `htmlindex.Get()` でデコーダーを取得し、
-`golang.org/x/text/transform` 経由で変換します。
+| フィールド | mailparse から |
+|---|---|
+| `from`・`sender` | すべての出現のすべての mailbox を `Mailbox.String()` にして `, ` で連ねる |
+| `to`・`cc`・`bcc`・`reply_to` | すべての出現のすべての mailbox を `Mailbox.String()` で 1 要素ずつ |
+| `return_path` | `Mailbox.String()`。空の逆経路は `<>` |
+| `date` | `Date` を RFC 3339 で。無ければ `DateRaw` |
+| `subject`・`message_id`・`in_reply_to`・`references` | mailparse の値のまま |
+| `x_mailer` | 1 つ目の X-Mailer の `Field.Collapsed()` |
+| `received` | すべての Received の `Field.Collapsed()`、順のまま |
+| `encoding` | UTF-8・US-ASCII 以外の最初の本文の文字コードを大文字で。.msg の Unicode プロパティ（UTF-16LE）は入れ物の保存形式なので数えない |
+| `body` | そのメールの本文。圧縮 RTF から復元した本文（`Origin == "rtf"`）は、他の本文が無いときだけ（.msg の RTF はふつう他の本文の写し） |
+| `attachments` | すべての添付の `Filename`・`MediaType`・`Size`。添付されたメールは同じ写し方で `message` に（`source` は無し） |
+| `warnings` | そのメール自身の `Warnings`（入れ子のメールは自分の分を持つ）。常に配列 |
 
-**encoding フィールド:** 最初に検出された非 ASCII テキストパートの文字コードを大文字で記録します。
-すべてのパートが UTF-8 または ASCII の場合は省略されます。
-
-## 転送エンコーディング
-
-| エンコーディング | 処理 |
-|----------------|------|
-| `base64` | 空白除去ラッパー付き `base64.NewDecoder` |
-| `quoted-printable` | `mime/quotedprintable.NewReader` |
-| `7bit` / `8bit` / `binary` / 未指定 | そのまま読み込み |
-
-## 添付ファイルの判定
-
-以下の条件を満たす MIME パートは添付ファイルとして扱われます:
-
-- `Content-Disposition` が `attachment` で始まる、または
-- `Content-Disposition` が `inline` で始まり `filename` パラメーターを持つ、または
-- メディアタイプが `text/*` でない
-
-バイナリコンテンツは出力に含めず、メタデータのみ（ファイル名・MIME タイプ・デコード後バイトサイズ）を収集します。
-
-## 本文の順序
-
-`multipart/alternative` の場合、パートはメッセージ内の出現順に出力されます。
-EML 仕様では `text/plain` が `text/html` より先に配置されるため、
-この順序は自然に保たれます。並び替えは行いません。
+アドレスを文字にするのは `Mailbox.String()` だけ。atom だけでない表示名を引用符で囲むので、復号するとアドレスの
+形になる表示名も表示名のまま。ここでアドレスを整形するコードは持たない。

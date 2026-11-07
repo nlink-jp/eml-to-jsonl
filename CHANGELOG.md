@@ -8,12 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Reverted
+The move to [mailparse](https://github.com/nlink-jp/mailparse) is redone, together with
+msg-to-jsonl, mail-analyzer and mail-analyzer-local, after the separate v0.5.0 attempt was
+withdrawn (it had no binaries; the tag stays). The changes below are against v0.4.0.
 
-- The move to nlink-jp/mailparse (v0.5.0) is undone: the code is back to
-  what it was before it. Four tools were moved separately and came out
-  inconsistent; the move will be redone for all of them together. The
-  v0.5.0 release had no binaries and was withdrawn to a draft.
+### Changed
+
+- **The message is read by mailparse v0.2.0** instead of this tool's own parser on `net/mail`,
+  `mime` and `mime/multipart`. eml-to-jsonl and msg-to-jsonl now print one schema from one shared
+  mapping (`internal/parser/email.go`, identical in both). For the same input:
+  - Address fields hold every mailbox of every occurrence of the field; `from` joins them with `, `.
+  - Mailboxes are written in RFC 5322 form that reads back as the same mailbox: a display name with
+    anything but atom characters and spaces is quoted, so a name that decodes to an address form stays
+    a name. A comment in a From field is part of the display name.
+  - Display names are decoded after the address is parsed (the old parser decoded first).
+  - Only `text/plain` and `text/html` parts are bodies; `text/calendar`, `text/csv` and other text
+    parts are attachments.
+  - Bodies from quoted-printable keep the message's CRLF line ends, as other encodings did.
+  - An attachment with no filename has an empty `filename` (it was `"attachment"`).
+  - `source` is omitted for an attached message (always present at the top level).
+- Input that is an Outlook `.msg` or a `winmail.dat` is refused with a pointer to msg-to-jsonl;
+  input with no header field and messages larger than 64 MiB are refused.
+
+### Added
+
+- `sender`, `reply_to` (array), `return_path` (`<>` for a bounce) and `references`.
+- `attachments[].message`: an attached message (`message/rfc822`, an embedded `.msg`, or a message
+  recognized by its content) parsed into the same shape, without `source`, up to three levels deep.
+- `warnings`: what the parser met and handled instead of failing, as `{code, detail, part}` with
+  mailparse's stable codes. Always an array; a nested message carries its own.
+
+### Fixed
+
+- A header line without a colon no longer fails the whole message (it is skipped with a warning).
+- An HTML part whose charset is declared only by `<meta charset>`, and an RFC 2047 word broken by
+  whitespace, are decoded.
+- A UTF-8 byte order mark before the header no longer swallows the first field.
+- Minimal mail that is not recognized as mail (a cron message with only a Subject) is read, with a
+  `not_detected_as_mail` warning.
+- The deferred `Close` calls pass `errcheck`, so `make lint` is clean.
 
 ## [0.5.0] - 2026-11-07
 

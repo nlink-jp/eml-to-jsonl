@@ -4,19 +4,18 @@
 
 | Package | Version | Purpose | Why not in-house |
 |---------|---------|---------|-----------------|
-| `golang.org/x/text` | v0.35.0 | Charset detection and conversion (ISO-2022-JP, Shift_JIS, EUC-JP, and all IANA-registered charsets) | Implementing correct charset conversion for dozens of encodings is a significant undertaking; the x/text package is the canonical Go solution, maintained by the Go team. |
+| `github.com/nlink-jp/mailparse` | v0.2.0 | Reads the message: RFC 5322 headers and addresses, MIME, transfer encodings, charsets, attached messages | It is in-house: the organization's mail parser, shared with msg-to-jsonl, mail-analyzer and mail-analyzer-local so they read mail the same way. |
+| `golang.org/x/text` | (through mailparse) | Charset conversion (ISO-2022-JP, Shift_JIS, EUC-JP, Windows code pages) | The canonical Go charset library, maintained by the Go team. |
+| `golang.org/x/net` | (through mailparse) | `html` charset detection from `<meta charset>` | Maintained by the Go team. |
+
+No community package is used.
 
 ## Standard library packages used
 
 | Package | Purpose |
 |---------|---------|
-| `net/mail` | RFC 2822 message parsing (headers + body split) |
-| `mime` | MIME media type parsing and RFC 2047 word decoding |
-| `mime/multipart` | MIME multipart body parsing |
-| `mime/quotedprintable` | Quoted-printable transfer encoding |
-| `encoding/base64` | Base64 transfer encoding |
 | `encoding/json` | JSONL output |
-| `path/filepath` | Directory globbing and path manipulation |
+| `path/filepath` | Directory globbing |
 
 ## Development
 
