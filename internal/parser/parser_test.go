@@ -13,7 +13,7 @@ func TestParse_SimpleText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "simple.eml")
 	if err != nil {
@@ -54,7 +54,7 @@ func TestParse_MultipartAlternative(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "multipart.eml")
 	if err != nil {
@@ -88,7 +88,7 @@ func TestParse_Attachments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "attachment.eml")
 	if err != nil {
@@ -124,7 +124,7 @@ func TestParse_JapaneseISO2022JP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "japanese.eml")
 	if err != nil {
@@ -158,7 +158,7 @@ func TestParse_Base64Body(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "base64_body.eml")
 	if err != nil {
@@ -185,7 +185,7 @@ func TestParse_Base64JapaneseBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
 	email, err := parser.Parse(f, "base64_japanese.eml")
 	if err != nil {

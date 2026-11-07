@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Reverted
+
+- The move to nlink-jp/mailparse (v0.5.0) is undone: the code is back to
+  what it was before it. Four tools were moved separately and came out
+  inconsistent; the move will be redone for all of them together. The
+  v0.5.0 release had no binaries and was withdrawn to a draft.
+
 ## [0.5.0] - 2026-11-07
 
 ### Changed

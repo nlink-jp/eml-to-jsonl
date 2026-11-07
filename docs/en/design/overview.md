@@ -26,45 +26,47 @@ One JSON object per message on stdout. The `--pretty` flag switches to indented 
 
 ```
 reader (file / stdin)
-  └─ parser.Parse()
-       ├─ mailparse.Detect()      — msg / TNEF / OLE: refuse (use msg-to-jsonl)
-       ├─ mailparse.ParseBytes()  — Options{AssumeEML: true}: minimal mail Detect does not
-       │                            recognize is read with not_detected_as_mail; headers in order with duplicates, addresses parsed before
-       │                            display names are decoded, the MIME tree, transfer encodings,
-       │                            charsets, nested messages, warnings (limits shared across a parse)
-       └─ fromMessage()           — maps mailparse.Message onto the JSONL record (recursively for
-                                    nested messages)
+  └─ net/mail.ReadMessage()       — RFC 2822 header + body split
+       ├─ extractHeaders()        — decode RFC 2047 headers to UTF-8
+       │    └─ mime.WordDecoder   — custom CharsetReader via golang.org/x/text
+       └─ parseBody()             — MIME body dispatch
+            ├─ simple part        — decodeTransfer() → decodeToUTF8() → BodyPart
+            └─ multipart/*        — recursive parseMultipart()
+                 ├─ text parts    → BodyPart (text/plain first, text/html second)
+                 └─ attachments   → Attachment (filename, MIME type, decoded size)
 ```
-
-Parsing defects are fixed in mailparse, not here. This package decides only the JSONL shape:
-
-| JSONL | From mailparse |
-|-------|----------------|
-| `from` | the mailboxes of the first `From` field |
-| `from_all` | every mailbox of every `From` field, when more than one |
-| `to`, `cc`, `bcc`, `sender`, `reply_to`, `return_path` | every mailbox of every occurrence |
-| `subject` | `Message.Subject` (first occurrence, RFC 2047 decoded and repaired) |
-| `date` | `Message.Date` as RFC 3339, else `DateRaw` |
-| `message_id`, `in_reply_to`, `references`, `x_mailer`, `received` | `Field.Collapsed()` (whitespace runs made one space, as net/textproto gave) |
-| `body` | `Message.Bodies` (text/plain and text/html without a filename) |
-| `encoding` | the first body charset that is not UTF-8 or US-ASCII, uppercased |
-| `attachments` | `Message.Attachments`; `message` from `Attachment.Message` |
-| `warnings` | `Message.Warnings` |
-
-A mailbox is `Mailbox.String()`: RFC 5322 form that reads back as the same one mailbox, with a
-display name quoted when it holds anything but atom characters and single spaces, so a decoded name
-cannot read as a second address.
 
 ## Charset handling
 
-All text content is converted to UTF-8 by mailparse: the declared charset, the HTML `<meta charset>`
-when none is declared, or a guess for undeclared Japanese text — each guess or fallback with a warning.
+All text content is converted to UTF-8 before output.
 
-## Limits
+**Headers:** RFC 2047 encoded words (`=?charset?encoding?text?=`) are decoded by
+`mime.WordDecoder` with a custom `CharsetReader` that uses `golang.org/x/text/encoding/htmlindex`
+to look up any IANA-registered charset including ISO-2022-JP, Shift_JIS, EUC-JP.
 
-All limits are mailparse's defaults: messages over 64 MiB are refused (a 25 MB attachment is about
-34 MB in Base64), 3 nested message layers, MIME depth 32, 1,000
-parts and 120 MiB decoded across a parse.
+**Body parts:** The `charset` parameter from `Content-Type` is used to construct a
+decoder from `htmlindex.Get()`, which is applied via `golang.org/x/text/transform`.
+
+**Encoding field:** Set to the uppercased charset of the first non-ASCII text body part
+encountered. Omitted if all parts are UTF-8 or ASCII.
+
+## Transfer encoding
+
+| Encoding | Handler |
+|----------|---------|
+| `base64` | `base64.NewDecoder` with a whitespace-stripping wrapper |
+| `quoted-printable` | `mime/quotedprintable.NewReader` |
+| `7bit` / `8bit` / `binary` / empty | read as-is |
+
+## Attachment detection
+
+A MIME part is treated as an attachment when:
+- `Content-Disposition` starts with `attachment`, or
+- `Content-Disposition` starts with `inline` and carries a `filename` parameter, or
+- the media type is not `text/*`.
+
+Only metadata is collected (filename, MIME type, decoded byte size).
+Binary content is not included in the output to keep JSONL lines compact.
 
 ## Body ordering
 

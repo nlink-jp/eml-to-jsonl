@@ -27,42 +27,48 @@ stdout にメッセージ1件につき1行の JSON オブジェクトを出力�
 
 ```
 reader（ファイル / stdin）
-  └─ parser.Parse()
-       ├─ mailparse.Detect()      — msg / TNEF / OLE は拒否（msg-to-jsonl を案内）
-       ├─ mailparse.ParseBytes()  — Options{AssumeEML: true}: Detect が判別しない最小限のメールも
-       │                            not_detected_as_mail を付けて読む。順序と重複を保ったヘッダ、表示名の復号より先のアドレスの解析、
-       │                            MIME の木、転送エンコーディング、文字コード、入れ子のメール、
-       │                            警告（上限は 1 回の解析全体で共有）
-       └─ fromMessage()           — mailparse.Message を JSONL のレコードに写す（入れ子は再帰）
+  └─ net/mail.ReadMessage()       — RFC 2822 ヘッダーと本文の分割
+       ├─ extractHeaders()        — RFC 2047 ヘッダーを UTF-8 にデコード
+       │    └─ mime.WordDecoder   — golang.org/x/text によるカスタム CharsetReader
+       └─ parseBody()             — MIME 本文の振り分け
+            ├─ 単純パート         — decodeTransfer() → decodeToUTF8() → BodyPart
+            └─ multipart/*        — 再帰的な parseMultipart()
+                 ├─ テキストパート → BodyPart（text/plain を先頭、text/html を後）
+                 └─ 添付ファイル  → Attachment（ファイル名・MIME タイプ・デコード後サイズ）
 ```
-
-解析の欠陥は mailparse で直し、ここでは直しません。このパッケージが決めるのは JSONL の形だけです:
-
-| JSONL | mailparse の |
-|-------|--------------|
-| `from` | 1 つ目の `From` のメールボックス |
-| `from_all` | すべての `From` のすべてのメールボックス（2 つ以上のとき） |
-| `to`・`cc`・`bcc`・`sender`・`reply_to`・`return_path` | 出てきたすべてのフィールドのすべてのメールボックス |
-| `subject` | `Message.Subject`（1 つ目。RFC 2047 を復号・補修済み） |
-| `date` | `Message.Date` を RFC 3339 で。解析できなければ `DateRaw` |
-| `message_id`・`in_reply_to`・`references`・`x_mailer`・`received` | `Field.Collapsed()`（空白の連なりを 1 つに。net/textproto と同じ） |
-| `body` | `Message.Bodies`（ファイル名の無い text/plain と text/html） |
-| `encoding` | UTF-8 でも US-ASCII でもない最初の本文の文字コード（大文字） |
-| `attachments` | `Message.Attachments`。`message` は `Attachment.Message` から |
-| `warnings` | `Message.Warnings` |
-
-メールボックスは `Mailbox.String()` です。読み直すと同じ 1 件に戻る RFC 5322 の形で、表示名が atom の記号と
-1 つずつの空白のほかを含むときは引用符で囲み、復号した表示名が 2 つ目のアドレスに見えないようにします。
 
 ## 文字コード処理
 
-すべてのテキストは mailparse が UTF-8 に変換します。宣言された文字コード、宣言が無ければ HTML の
-`<meta charset>`、宣言の無い日本語なら推定です。推定や代替のたびに警告が付きます。
+すべてのテキストコンテンツは出力前に UTF-8 に変換されます。
 
-## 上限
+**ヘッダー:** RFC 2047 エンコードワード（`=?charset?encoding?text?=`）は
+`mime.WordDecoder` によってデコードされます。カスタム `CharsetReader` は
+`golang.org/x/text/encoding/htmlindex` を使用し、ISO-2022-JP・Shift_JIS・EUC-JP を含む
+IANA 登録済みのすべての文字コードに対応します。
 
-上限はすべて mailparse の既定です: 64 MiB を超えるメールは拒否（25 MB の添付は Base64 で約 34 MB）、入れ子のメール 3 層、MIME の深さ 32、パート 1,000、
-デコード後 120 MiB（1 回の解析全体で）。
+**本文パート:** `Content-Type` の `charset` パラメーターから `htmlindex.Get()` でデコーダーを取得し、
+`golang.org/x/text/transform` 経由で変換します。
+
+**encoding フィールド:** 最初に検出された非 ASCII テキストパートの文字コードを大文字で記録します。
+すべてのパートが UTF-8 または ASCII の場合は省略されます。
+
+## 転送エンコーディング
+
+| エンコーディング | 処理 |
+|----------------|------|
+| `base64` | 空白除去ラッパー付き `base64.NewDecoder` |
+| `quoted-printable` | `mime/quotedprintable.NewReader` |
+| `7bit` / `8bit` / `binary` / 未指定 | そのまま読み込み |
+
+## 添付ファイルの判定
+
+以下の条件を満たす MIME パートは添付ファイルとして扱われます:
+
+- `Content-Disposition` が `attachment` で始まる、または
+- `Content-Disposition` が `inline` で始まり `filename` パラメーターを持つ、または
+- メディアタイプが `text/*` でない
+
+バイナリコンテンツは出力に含めず、メタデータのみ（ファイル名・MIME タイプ・デコード後バイトサイズ）を収集します。
 
 ## 本文の順序
 
