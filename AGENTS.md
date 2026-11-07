@@ -23,15 +23,23 @@ go test ./... # tests only
 ```
 main.go                        ← entry point, flag parsing, stdin/file reading
 internal/parser/
-  email.go                     ← Email struct, ToJSON()
-  headers.go                   ← header extraction (From, To, Subject, Date, etc.)
-  body.go                      ← MIME body parsing (text/plain, text/html)
-  charset.go                   ← character encoding detection and conversion
-  parser_test.go               ← unit tests
+  email.go                     ← Email struct; Parse() maps mailparse.Message onto it
+  parser_test.go               ← unit tests (the original fixtures)
+  defects_test.go              ← the defects mailparse fixed, and the mapping rules
+testdata/                      ← fixtures; testdata/defects/ are copies of mailparse's
 ```
 
 ## Gotchas
 
-- **No external dependencies**: uses only the Go standard library for MIME parsing.
-- **Charset handling**: auto-detects and converts non-UTF-8 encodings (ISO-2022-JP, Shift_JIS, etc.).
+- **Reading the message is mailparse's job** (`github.com/nlink-jp/mailparse`, lib-series; it
+  depends on `golang.org/x/text` and `golang.org/x/net`). Fix a parsing defect there, not here;
+  this package only maps the result onto the JSONL shape.
+- **The JSONL is read by downstream tools**: keep existing fields and their meaning; put new
+  information in new, omitempty fields. Compare before/after output when changing the mapping.
+- **Never format a mailbox by joining `Name <addr>`; use `Mailbox.String()`**: a decoded display
+  name can hold an address form, and only the quoting keeps it from reading as a second address.
+- **Received, X-Mailer, In-Reply-To, References, Message-ID use `Field.Collapsed()`** (whitespace
+  runs made one space), as net/textproto did; mailparse's `Value` keeps the folding tab.
+- **Detection**: `Options{AssumeEML: true}` reads minimal mail `mailparse.Detect` does not recognize
+  (`From: root`), with a `not_detected_as_mail` warning. .msg/TNEF/OLE are refused before parsing.
 - **Module path**: `github.com/nlink-jp/eml-to-jsonl`.

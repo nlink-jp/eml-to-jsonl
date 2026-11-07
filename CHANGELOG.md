@@ -8,7 +8,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The message is read by [mailparse](https://github.com/nlink-jp/mailparse)
+  v0.2.0** instead of this tool's own parser on `net/mail`, `mime` and
+  `mime/multipart`. The JSONL keeps its fields and their meaning; what changes
+  for the same input:
+  - `to`, `cc`, `bcc` hold the mailboxes of every occurrence of the field, not
+    only the first.
+  - Mailboxes are written in RFC 5322 form that reads back as the same one
+    mailbox: a display name holding anything but atom characters and single
+    spaces is a quoted string, so a name that decodes to an address form no
+    longer reads as a second address. This also quotes names with a `.`
+    (`"John Q. Public"`) or an ideographic space (U+3000), which were bare.
+    A name with no address is the quoted name alone.
+  - A display name is decoded after the address is parsed: the old parser
+    decoded first and could lose part of a name (a parenthesis read as a
+    comment) or take an address out of it.
+  - Bodies from quoted-printable keep the message's CRLF line ends, as the
+    other transfer encodings already did (they were LF).
+  - Only `text/plain` and `text/html` parts without a filename are bodies;
+    `text/calendar`, `text/csv` and other text parts, and text parts with a
+    `name`, are now attachments.
+  - `encoding` also reports a charset taken from HTML `<meta charset>` or
+    guessed for undeclared Japanese.
+  - An attachment's `size` counts what decodes from damaged Base64 (it was 0).
+  - Outlook `.msg`, TNEF and other OLE files, input with no header field, and
+    messages larger than 64 MiB are refused.
+
+### Added
+
+- `from_all` (every mailbox of every `From` field, when there is more than
+  one), `sender`, `reply_to`, `return_path` and `references`.
+- `attachments[].message`: a forwarded message (`message/rfc822`, or a message
+  attached under another type and recognized by its content) parsed in the
+  same shape.
+- `warnings`: what the parse met and handled instead of failing, with
+  mailparse's stable codes (`not_detected_as_mail` for minimal mail that is
+  read although it is not recognized as mail). Omitted when empty.
+
 ### Fixed
+
+- A header line without a colon no longer fails the whole message; the line is
+  skipped with a `malformed_header_line` warning.
+- A multipart whose closing boundary never comes keeps the parts after the
+  first (they were dropped silently).
+- An HTML part whose charset is declared only by `<meta charset>` is decoded
+  (it was garbled).
+- An RFC 2047 encoded-word broken by whitespace is repaired (the subject was
+  left encoded).
+- A multipart nested too deep is kept as an attachment with a warning (it was
+  dropped silently).
+- A UTF-8 byte order mark before the header is skipped with a `leading_bom`
+  warning (it swallowed the first field).
+- The deferred `Close` calls pass `errcheck`, so `make lint` is clean.
 
 - **`make verify-release` now fails closed.** Its last block chained unzip, the
   packaged binary's `--version` and `spctl` with `&&` and ended the whole chain
