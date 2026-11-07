@@ -2,7 +2,7 @@ module github.com/nlink-jp/eml-to-jsonl
 
 go 1.26.1
 
-require github.com/nlink-jp/mailparse v0.2.0
+require github.com/nlink-jp/mailparse v0.3.0
 
 require (
 	golang.org/x/net v0.52.0 // indirect
