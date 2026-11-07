@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
 ### Changed
 
 - **The message is read by [mailparse](https://github.com/nlink-jp/mailparse)
