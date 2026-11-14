@@ -13,7 +13,7 @@ NOTARY_PROFILE    ?= nlink-jp-notary
 # darwin ships arm64 only (no amd64, no universal). linux/windows keep their matrix.
 PLATFORMS := darwin/arm64 linux/amd64 linux/arm64 windows/amd64
 
-.PHONY: build test vet lint check clean setup build-all package verify-release
+.PHONY: build test vet lint check clean setup build-all package verify-release vuln
 
 build:
 	@mkdir -p dist
@@ -50,8 +50,15 @@ build-all:
 	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-arm64 "$(CODESIGN_IDENTITY)" "$(BINARY)"
 	@echo "Cross-compiled binaries in dist/"
 
+## vuln: known vulnerabilities in the modules and the standard library this
+## build uses (govulncheck). `package` depends on it, so a release cannot be
+## built past a finding. It needs the network, and its database changes under
+## an unchanged tree: a finding can appear without a commit.
+vuln:
+	govulncheck ./...
+
 ## package: Build all platforms, zip with versioned naming + README, notarize darwin → dist/
-package: build-all
+package: vuln build-all
 	@cd dist && for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
 		ext=""; [ "$$os" = windows ] && ext=".exe"; \
 		stage=_pkg; rm -rf $$stage; mkdir -p $$stage; \
