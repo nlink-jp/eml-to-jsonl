@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 
+## [0.6.2] - 2026-11-14
+
+### Security
+
+- **mailparse v0.3.1, with `golang.org/x/net` v0.62.0 and `golang.org/x/text`
+  v0.43.0** (from v0.52.0 and v0.35.0). Nothing this tool calls was affected:
+  mailparse uses only the tokenizer of `x/net/html`, and the advisories
+  `govulncheck` listed for that package are in `Parse` and `Render`. The
+  update takes the affected code out of the build rather than leaving that
+  argument to be made again.
+
+### Changed
+
+- **Building from source needs Go 1.27.4 or later** (`go.mod`; it was 1.26.1),
+  the release whose standard library carries the fixes published so far.
+- **`make package` runs the vulnerability check first** (`make vuln`).
+  `make check` already ran it; a release could still be packaged without
+  running `check`.
+
 ## [0.6.1] - 2026-11-07
 
 ### Fixed
