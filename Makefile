@@ -50,12 +50,17 @@ build-all:
 	@scripts/codesign-darwin.sh dist/$(BINARY)-darwin-arm64 "$(CODESIGN_IDENTITY)" "$(BINARY)"
 	@echo "Cross-compiled binaries in dist/"
 
-## vuln: known vulnerabilities in the modules and the standard library this
-## build uses (govulncheck). `package` depends on it, so a release cannot be
-## built past a finding. It needs the network, and its database changes under
-## an unchanged tree: a finding can appear without a commit.
+## vuln: known vulnerabilities in the modules and the standard library each
+## release build uses (govulncheck) — once per platform in PLATFORMS, with the
+## environment build-all builds it with, because an advisory in an OS-only
+## package shows only in that OS's build. `package` depends on it, so a release
+## cannot be built past a finding. It needs the network, and its database
+## changes under an unchanged tree: a finding can appear without a commit.
 vuln:
-	govulncheck ./...
+	@for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
+		echo "govulncheck $$os/$$arch"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch govulncheck ./... || exit 1; \
+	done
 
 ## package: Build all platforms, zip with versioned naming + README, notarize darwin → dist/
 package: vuln build-all
